@@ -1,6 +1,19 @@
 const uuid = require('uuid').v4
 const _ = require('lodash')
 const { DOMAIN } = require('../config')
+const { PythonShell} = require('python-shell')
+
+var count = 0 
+var keyword = ''
+
+var options = {
+  mode: 'text',
+  pythonPath: '',
+  pythonOptions: ['-u'],
+  scriptPath: '',
+  args: [keyword]
+};
+
 
 class Directive {
   constructor({namespace, name, payload}) {
@@ -11,6 +24,22 @@ class Directive {
     }
     this.payload = payload
   }
+}
+
+function runPython() {
+  PythonShell.run('rpa_ex2.py', options, function (err, results) {
+    if (err) throw err;
+    count = results
+  });
+  
+}
+
+function runPython2() {
+  PythonShell.run('test.py', options, function (err, results) {
+    if (err) throw err;
+    count = results
+  });
+  
 }
 
 function resultText({midText, sum, diceCount}) {
@@ -62,7 +91,7 @@ class CEKRequest {
 
   launchRequest(cekResponse) {
     console.log('launchRequest')
-    cekResponse.setSimpleSpeechText('몇개의 주사위를 던질까요?')
+    cekResponse.setSimpleSpeechText('무엇을 검색 할까요?')
     cekResponse.setMultiturn({
       intent: 'ThrowDiceIntent',
     })
@@ -75,6 +104,16 @@ class CEKRequest {
     const slots = this.request.intent.slots
 
     switch (intent) {
+    case 'SearchNaraIntent' :
+      cekResponse.appendSpeechText(`검색을 시작합니다.`)
+      runPython()
+      break
+    case 'ScrapingIntent' :
+      cekResponse.appendSpeechText(`검색을 시작합니다.`)
+      const newsCateSlot = slots.category
+      keyword = newsCateSlot.value
+      runPython2()
+      break
     case 'ThrowDiceIntent':
       let diceCount = 1
       if (!!slots) {
@@ -98,7 +137,7 @@ class CEKRequest {
       break
     case 'Clova.GuideIntent':
     default:
-      cekResponse.setSimpleSpeechText("주사위 한 개 던져줘, 라고 시도해보세요.")
+      cekResponse.setSimpleSpeechText("나라장터 검색해줘, 라고 시도해보세요.")
     }
 
     if (this.session.new == false) {
@@ -166,6 +205,7 @@ class CEKResponse {
 }
 
 const clovaReq = function (httpReq, httpRes, next) {
+  console.log('start!')
   cekResponse = new CEKResponse()
   cekRequest = new CEKRequest(httpReq)
   cekRequest.do(cekResponse)
